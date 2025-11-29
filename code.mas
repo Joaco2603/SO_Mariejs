@@ -1,0 +1,53 @@
+/ ------------------------------------------------
+/ PROYECTO SC-8: DEMOSTRACION DE SEGURIDAD (SINGLE BLOCK)
+/ ------------------------------------------------
+
+ORG 000
+
+/ --- BOOTSTRAP (Inicio del Sistema) ---
+/ La CPU empieza aqui. Saltamos directo al codigo de usuario
+/ para evitar ejecutar las variables de datos.
+Jump StartUser
+
+/ --- ZONA DE DATOS DEL KERNEL (Ring 0) ---
+/ Adaptacion: MMSR ahora esta en la direccion 001
+MMSR,       DEC 0       / 0=Usuario
+KernelBit,  DEC 1       / 1=Kernel
+UserBit,    DEC 0
+SecretData, HEX CAFE    / El dato secreto
+
+/ --- RUTINAS DEL KERNEL ---
+/ Subrutina Syscall_Print
+Syscall_Print, HEX 0
+
+           / 1. Entrada al Kernel: Activar bit de modo
+           Load KernelBit
+           Store MMSR      / Ahora MMSR vale 1
+
+           / 2. Seccion Critica
+           Load SecretData
+           Output
+
+           / 3. Salida del Kernel: Desactivar bit de modo
+           Load UserBit
+           Store MMSR      / Ahora MMSR vale 0
+
+           / 4. Retorno
+           JumpI Syscall_Print
+
+/ ------------------------------------------------
+/ --- PROGRAMA DE USUARIO (Ring 3) ---
+/ ------------------------------------------------
+StartUser, Load UserVal    / Carga valor inicial
+           Store Temp
+
+           / INTENTO DE ACCESO AL KERNEL
+           / Invocamos la syscall
+           JnS Syscall_Print
+           
+           / Al volver, terminamos
+           Halt
+
+/ Variables de Usuario
+UserVal, DEC 5
+Temp,    DEC 0
